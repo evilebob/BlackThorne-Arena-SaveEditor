@@ -692,21 +692,42 @@ def edit_gladiators(arena_index, gladiators_list, tree_widget, parent_item):
     def add_gladiator():
         add_window = tk.Toplevel(edit_window)
         add_window.title("Add Gladiator")
-        add_window.geometry("300x200")
+        add_window.geometry("300x250")  # increased height for search bar
+        
+        # Create search bar frame at the top
+        search_frame = ttk.Frame(add_window)
+        search_frame.pack(fill=tk.X, padx=10, pady=5)
+        search_label = ttk.Label(search_frame, text="Search:")
+        search_label.pack(side=tk.LEFT)
+        search_var = tk.StringVar()
+        search_entry = ttk.Entry(search_frame, textvariable=search_var)
+        search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        # Label and dropdown for NPC selection
         ttk.Label(add_window, text="Select NPC:").pack(pady=10)
         selected_npc = tk.StringVar()
         npc_dropdown = ttk.Combobox(add_window, textvariable=selected_npc, state="readonly")
         
-        # Build dropdown list with all NPCs from the savegame (if they have an id)
-        dropdown_values = []
+        # Build full list of NPC options
+        all_dropdown_values = []
         for npc in savegame_data.get("npcs", []):
             npc_id = npc.get("id")
             if npc_id is None:
                 continue
             display = f"{npc_id}: {get_npc_name(npc)}"
-            dropdown_values.append(display)
-        npc_dropdown['values'] = dropdown_values
+            all_dropdown_values.append(display)
+        npc_dropdown['values'] = all_dropdown_values
         npc_dropdown.pack(pady=5)
+        
+        # Update the dropdown list based on search text
+        def update_dropdown(*args):
+            search_text = search_var.get()
+            filtered_values = [val for val in all_dropdown_values if search_text.lower() in val.lower()]
+            npc_dropdown['values'] = filtered_values
+            if selected_npc.get() not in filtered_values:
+                selected_npc.set('')
+        
+        search_var.trace("w", update_dropdown)
         
         def confirm_add():
             new_npc_display = selected_npc.get()
@@ -731,7 +752,6 @@ def edit_gladiators(arena_index, gladiators_list, tree_widget, parent_item):
             # Additionally, remove the NPC id from any match arrays (like memberIds or candidateIds)
             remove_npc_from_arena_matches(new_npc_id)
             gladiators_list.append(new_npc_id)
-            # --- State Enhancement ---
             # Reset the NPC's state to the hard-coded neutral state.
             for npc in savegame_data.get("npcs", []):
                 if npc.get("id") == new_npc_id:
